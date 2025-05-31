@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Emotion Chatbot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #1f1f1f;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #ddd;
+    }
+    .chat-container {
+      background-color: #333;
+      width: 800px;
+      height: 90vh;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+    .chat-box {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      border-bottom: 1px solid #444;
+    }
+    .chat-input {
+      display: flex;
+      padding: 10px;
+      background-color: #222;
+      border-top: 1px solid #444;
+    }
+    .chat-input input {
+      flex-grow: 1;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background-color: #444;
+      color: #ddd;
+    }
+    .chat-input button {
+      margin-left: 8px;
+      padding: 8px 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .message {
+      margin: 8px 0;
+      padding: 8px 12px;
+      border-radius: 12px;
+      max-width: 80%;
+      clear: both;
+    }
+    .user-message {
+      background-color: #007bff;
+      color: white;
+      float: right;
+    }
+    .bot-message {
+      background-color: #555;
+      float: left;
+    }
+    .response-meta {
+      color: #bbb;
+      font-size: 0.9em;
+      margin-bottom: 5px;
+    }
+    .clear-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .clear-btn {
+      right: 110px;
+      background-color: #f44336;
+    }
+    
+    .clear-btn:hover {
+      background-color: #d32f2f;
+    }
+    .translation-btns {
+    margin-top: 5px;
+    display: flex;
+    gap: 5px;
+  }
+
+  .translate-btn, .feedback-btn {
+    padding: 2px 8px;
+    font-size: 0.8em;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  .translate-btn {
+    background-color: #4CAF50;
+    border: 1px solid #45a049;
+  }
+
+  .feedback-form {
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff;
+    padding: 20px;
+    border: 2px solid #333;
+    border-radius: 10px;
+    z-index: 1000;
+    width: 300px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  }
+  .feedback-form input,
+  .feedback-form textarea {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 5px;
+  }
+  .feedback-form button {
+    margin-right: 10px;
+  
+  }
+  </style>
+</head>
+<body>
+  <button class="clear-btn" onclick="clearHistory()">Clear Chat</button>
+
+  <div class="chat-container">
+    <div class="chat-box" id="chatBox"></div>
+    <div class="chat-input">
+      <input type="text" id="userInput" placeholder="Write your message..." autofocus />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('userInput').focus();
+
+    document.getElementById('userInput').addEventListener('keydown', function(event) {
+      if (event.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
+    function sendMessage() {
+      const inputField = document.getElementById('userInput');
+      const message = inputField.value.trim();
+      if (message === '') return;
+
+      displayMessage(message, 'user-message');
+      inputField.value = '';
+
+      fetch('http://127.0.0.1:5000/predict', {
+        method: 'POST',
+        body: JSON.stringify({ text: message }),
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(response => response.json())
+      .then(data => {
+        const responseMeta = `Supercategory: ${data.supercategory}, Emotion: ${data.specific_emotion}, Confidence: ${data.confidence.toFixed(2)}`;
+        const botResponse = `${data.bot_response}`;
+
+        // Display meta with feedback and translate buttons (passes botResponse text for translate)
+        displayMessage(responseMeta, 'bot-message response-meta', {
+          emotion: data.specific_emotion,
+          originalText: message,
+          botResponseText: botResponse
+        });
+        // Display bot message separately
+        displayMessage(botResponse, 'bot-message');
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        displayMessage('Error analyzing emotion', 'bot-message');
+      });
+    }
+
+    function displayMessage(text, className, metaData = {}) {
+      const chatBox = document.getElementById('chatBox');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'message ' + className;
+      messageDiv.textContent = text;
+
+      if (className.includes('response-meta')) {
+        const btnContainer = document.createElement('div');
+        btnContainer.className = 'translation-btns';
+
+        const translateBtn = document.createElement('button');
+        translateBtn.className = 'translate-btn';
+        translateBtn.textContent = 'Translate';
+        // Pass bot's actual reply text for translation, fallback to meta text if missing
+        translateBtn.onclick = () => handleTranslate(metaData.botResponseText || text);
+
+        const feedbackBtn = document.createElement('button');
+        feedbackBtn.className = 'feedback-btn';
+        feedbackBtn.textContent = 'Feedback';
+        feedbackBtn.onclick = () => showFeedbackForm(metaData.emotion, metaData.originalText);
+
+        btnContainer.appendChild(translateBtn);
+        btnContainer.appendChild(feedbackBtn);
+        messageDiv.appendChild(btnContainer);
+      }
+      
+
+      chatBox.appendChild(messageDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function loadHistory() {
+      fetch('http://127.0.0.1:5000/history')
+        .then(response => response.json())
+        .then(data => {
+          data.forEach(entry => {
+            displayMessage(entry.user, 'user-message');
+            const meta = `Supercategory: ${entry.supercategory}, Emotion: ${entry.specific_emotion}, Confidence: ${entry.confidence.toFixed(2)}`;
+            displayMessage(meta, 'bot-message response-meta');
+            displayMessage(entry.bot, 'bot-message');
+          });
+        })
+        .catch(err => console.error('Failed to load history:', err));
+    }
+
+    function clearHistory() {
+      fetch('http://127.0.0.1:5000/clear_history', { method: 'POST' })
+        .then(() => {
+          const chatBox = document.getElementById('chatBox');
+          chatBox.innerHTML = '';
+        })
+        .catch(err => console.error('Error clearing history:', err));
+    }
+
+    function handleTranslate(text) {
+      fetch('http://127.0.0.1:5000/translate', {
+        method: 'POST',
+        body: JSON.stringify({ text: text }),
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.translated) {
+          alert(`Translation (${data.src_lang}): ${data.translated}`);
+        } else if (data.error) {
+          alert('Translation error: ' + data.error);
+        } else {
+          alert('Translation unavailable');
+        }
+      })
+      .catch(err => console.error('Translation error:', err));
+    }
+
+    function showFeedbackForm(detectedEmotion, originalText) {
+    // Remove any existing form to avoid duplicates
+    const existing = document.getElementById('feedbackForm');
+    if (existing) existing.remove();
+
+    const formDiv = document.createElement('div');
+    formDiv.className = 'feedback-form';
+    formDiv.id = 'feedbackForm';
+
+    formDiv.innerHTML = `
+      <h3>Emotion Feedback</h3>
+      <p>Detected emotion: ${detectedEmotion}</p>
+      <input type="text" id="correctedEmotion" placeholder="Correct emotion">
+      <textarea id="feedbackComment" placeholder="Additional comments"></textarea>
+      <button id="submitFeedbackBtn">Submit</button>
+      <button onclick="document.getElementById('feedbackForm').remove()">Cancel</button>
+    `;
+
+    document.body.appendChild(formDiv);
+
+    // Attach handler safely
+    document.getElementById('submitFeedbackBtn').addEventListener('click', function () {
+      submitFeedback(originalText, detectedEmotion);
+    });
+  }
+
+    function submitFeedback(originalText, detectedEmotion) {
+    const corrected = document.getElementById('correctedEmotion').value;
+    const comment = document.getElementById('feedbackComment').value;
+
+    fetch('http://127.0.0.1:5000/submit_feedback', {
+      method: 'POST',
+      body: JSON.stringify({
+        text: originalText,
+        detected_emotion: detectedEmotion,
+        user_feedback: corrected,
+        comment: comment
+      }),
+      headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => {
+      if (response.ok) {
+        console.log("Feedback submitted!");
+        document.getElementById('feedbackForm').remove();
+      } else {
+        console.error("Failed to submit feedback");
+      }
+    })
+    .catch(err => console.error('Feedback error:', err));
+  }
+
+    window.onload = loadHistory;
+  </script>
+</body>
