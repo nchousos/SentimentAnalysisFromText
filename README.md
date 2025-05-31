@@ -28,3 +28,59 @@
 
 ```bash
 python Dataset/DatasetCleanUp.py
+```
+
+Αυτό θα δημιουργήσει τα αρχεία:
+
+train_cleaned.csv
+
+validation_cleaned.csv
+
+test_cleaned.csv
+
+### 2. Εκπαίδευση Μοντέλων
+
+Τρέξτε διαδοχικά τα εξής scripts που βρίσκονται στον φάκελο Training Models/:
+
+```bash
+python Training Models/TrainingSuperCat.py
+python Training Models/TrainingNeut.py
+python Training Models/TrainingEmotions.py
+```
+
+Αυτά θα δημιουργήσουν τους αντίστοιχους φακέλους με τα εκπαιδευμένα μοντέλα και τους tokenizers για:
+
+Supercategory (Θετικά / Αρνητικά / Ουδέτερα)
+
+Ουδέτερα 
+
+Ειδικά Συναισθήματα ανά Supercategory
+
+### 3. Αξιολόγηση Ιεραρχικού Μοντέλου
+
+Για να ελέγξετε την απόδοση του συστήματος στο test set, τρέξτε το παρακάτω script:
+
+```bash
+python Evaluation on Test Dataset/EvaluationTestDataset.py
+```
+
+Αυτό φορτώνει το test_cleaned.csv, αξιολογεί την ακρίβεια του ιεραρχικού μοντέλου και εμφανίζει τα αποτελέσματα.
+
+### 4. Εκκίνηση Chatbot Εφαρμογής
+
+Για να δοκιμάσετε το chatbot:
+
+1.Τρέξτε την Flask εφαρμογή:
+
+```bash
+python ChatBot App/app.py
+```
+
+2.Στη συνέχεια, ανοίξτε χειροκίνητα το αρχείο ChatBot App/website.html με τον browser σας (κατά προτίμηση Google Chrome).
+
+# Σημειώσεις
+
+Η εκπαίδευση γίνεται σε τρία στάδια (supercategory, ουδέτερα, ειδικά συναισθήματα) ώστε να επιτυγχάνεται ιεραρχική ταξινόμηση.
+Το σύστημα εμφανίζει ιδιαίτερη ακρίβεια στα θετικά συναισθήματα.
+Δυσκολεύεται στην αναγνώριση ειρωνείας και σε κείμενα με πολλαπλά συναισθήματα.
+Δημιουργήθηκε ως μέρος πτυχιακής εργασίας – University of East London
